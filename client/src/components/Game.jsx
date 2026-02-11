@@ -286,8 +286,14 @@ const Game = () => {
                     </Modal>
                 </>
             )}
-            <div className="fixed bottom-4 right-4 text-white font-bold text-sm opacity-50 hover:opacity-100 transition-opacity">
-                © Bhaskar Shamo Ray
+            <div className="fixed bottom-4 right-4 text-white font-bold text-sm opacity-50 hover:opacity-100 transition-opacity flex items-center gap-2">
+                © Copyright 2026.
+                <a
+                    href="mailto:bhaskarshamoray11@gmail.com"
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-transform hover:scale-105 no-underline"
+                >
+                    Er.Bsr
+                </a>
             </div>
         </div>
     );
