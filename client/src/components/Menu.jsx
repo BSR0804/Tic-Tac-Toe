@@ -13,6 +13,7 @@ const Menu = ({ onStartGame, onJoinGame }) => {
     const isLoggedIn = !!user;
 
     const handleLoginSuccess = (username) => {
+        localStorage.setItem('username', username);
         setUser(username);
         setIsAuthOpen(false);
     };
