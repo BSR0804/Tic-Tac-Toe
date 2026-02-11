@@ -157,14 +157,24 @@ const Game = () => {
         }
     };
 
+    const joinRoomWhenReady = (roomCode) => {
+        if (socket.connected) {
+            socket.emit('join_room', roomCode);
+        } else {
+            socket.connect();
+            socket.once('connect', () => {
+                socket.emit('join_room', roomCode);
+            });
+        }
+    };
+
     const handleStartGame = (mode, diff = 'easy') => {
         setDifficulty(diff);
         resetGame(false, true); // (emit, fullReset)
 
         if (mode === 'online-create' || mode === 'online-random') {
             const newRoom = Math.random().toString(36).substring(2, 8).toUpperCase();
-            if (!socket.connected) socket.connect();
-            socket.emit('join_room', newRoom);
+            joinRoomWhenReady(newRoom);
             setRoom(newRoom);
             setPlayerSymbol('X');
             setIsMyTurn(true);
@@ -177,8 +187,7 @@ const Game = () => {
     const handleJoinGame = (inputRoom) => {
         if (!inputRoom) return;
         resetGame(false, true);
-        if (!socket.connected) socket.connect();
-        socket.emit('join_room', inputRoom.toUpperCase());
+        joinRoomWhenReady(inputRoom.toUpperCase());
         setRoom(inputRoom.toUpperCase());
         setPlayerSymbol('O');
         setIsMyTurn(false); // X goes first
