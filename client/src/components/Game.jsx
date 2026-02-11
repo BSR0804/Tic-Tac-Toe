@@ -6,7 +6,9 @@ import Menu from './Menu';
 import { checkWinner, checkDraw, getBestMove } from '../utils/gameLogic';
 
 const socket = io('http://localhost:3001', {
-    autoConnect: false
+    autoConnect: false,
+    transports: ['websocket'],  // Force WebSocket only, skip polling
+    upgrade: false
 });
 
 const Game = () => {
@@ -112,22 +114,25 @@ const Game = () => {
     }, [board, isXNext, gameMode, winner, difficulty]);
 
     const performMove = (index, player) => {
-        const newBoard = [...board];
-        newBoard[index] = player;
-        setBoard(newBoard);
+        setBoard(prev => {
+            const newBoard = [...prev];
+            newBoard[index] = player;
 
-        const winInfo = checkWinner(newBoard);
-        if (winInfo) {
-            setWinner(winInfo.winner);
-            setWinningLine(winInfo.line);
-        } else if (checkDraw(newBoard)) {
-            setWinner('Draw');
-        } else {
-            setIsXNext(!isXNext);
-            if (gameMode === 'online') {
-                // If I just moved, it's NOT my turn
-                if (player === playerSymbol) setIsMyTurn(false);
+            const winInfo = checkWinner(newBoard);
+            if (winInfo) {
+                setWinner(winInfo.winner);
+                setWinningLine(winInfo.line);
+            } else if (checkDraw(newBoard)) {
+                setWinner('Draw');
+            } else {
+                setIsXNext(prevTurn => !prevTurn);
             }
+
+            return newBoard;
+        });
+
+        if (gameMode === 'online' && player === playerSymbol) {
+            setIsMyTurn(false);
         }
     };
 
@@ -153,26 +158,28 @@ const Game = () => {
     };
 
     const handleStartGame = (mode, diff = 'easy') => {
-        setGameMode(mode);
         setDifficulty(diff);
         resetGame(false, true); // (emit, fullReset)
 
         if (mode === 'online-create' || mode === 'online-random') {
             const newRoom = Math.random().toString(36).substring(2, 8).toUpperCase();
-            socket.connect();
+            if (!socket.connected) socket.connect();
             socket.emit('join_room', newRoom);
             setRoom(newRoom);
             setPlayerSymbol('X');
             setIsMyTurn(true);
             setGameMode('online');
+        } else {
+            setGameMode(mode);
         }
     };
 
     const handleJoinGame = (inputRoom) => {
         if (!inputRoom) return;
-        socket.connect();
-        socket.emit('join_room', inputRoom);
-        setRoom(inputRoom);
+        resetGame(false, true);
+        if (!socket.connected) socket.connect();
+        socket.emit('join_room', inputRoom.toUpperCase());
+        setRoom(inputRoom.toUpperCase());
         setPlayerSymbol('O');
         setIsMyTurn(false); // X goes first
         setGameMode('online');
