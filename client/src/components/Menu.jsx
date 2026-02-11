@@ -162,9 +162,9 @@ const Menu = ({ onStartGame, onJoinGame }) => {
     // User IS logged in — show the game menu
     return (
         <div className="flex flex-col gap-4 text-center items-center w-full">
-            {/* User Profile - top right aligned */}
-            <div className="self-end">
-                <div className="flex items-center gap-3 bg-gray-800/80 p-2 rounded-full px-4 border border-gray-700">
+            {/* User Profile - fixed top right of screen */}
+            <div className="fixed top-2 right-2 z-40">
+                <div className="flex items-center gap-3 bg-gray-800/90 p-2 rounded-full px-4 border border-gray-700 shadow-lg backdrop-blur-sm">
                     <span className="text-white font-semibold flex items-center gap-2 text-sm">
                         <FaUserCircle className="text-lg text-blue-400" />
                         {user}

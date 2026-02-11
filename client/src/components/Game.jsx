@@ -287,7 +287,7 @@ const Game = () => {
                 </>
             )}
             <div className="fixed bottom-4 right-4 text-white font-bold text-sm opacity-50 hover:opacity-100 transition-opacity">
-                Bhaskar Shamo Ray
+                © Bhaskar Shamo Ray
             </div>
         </div>
     );
