@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaGlobe, FaUsers, FaHandshake, FaRobot, FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
+import { FaGlobe, FaUsers, FaHandshake, FaRobot, FaUserCircle, FaSignOutAlt, FaGamepad } from 'react-icons/fa';
 import { MdPhoneIphone } from 'react-icons/md';
 import AuthModal from './AuthModal';
 import { getCurrentUser, logout } from '../utils/auth';
@@ -10,8 +10,11 @@ const Menu = ({ onStartGame, onJoinGame }) => {
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [user, setUser] = useState(getCurrentUser());
 
+    const isLoggedIn = !!user;
+
     const handleLoginSuccess = (username) => {
         setUser(username);
+        setIsAuthOpen(false);
     };
 
     const handleLogout = () => {
@@ -122,32 +125,57 @@ const Menu = ({ onStartGame, onJoinGame }) => {
         </div>
     );
 
-    return (
-        <div className="flex flex-col gap-8 text-center items-center w-full relative">
-            {/* Auth Button */}
-            <div className="absolute top-0 right-0 p-4">
-                {user ? (
-                    <div className="flex items-center gap-4 bg-gray-800/80 p-2 rounded-full px-4 border border-gray-700">
-                        <span className="text-white font-semibold flex items-center gap-2">
-                            <FaUserCircle className="text-xl text-blue-400" />
-                            {user}
-                        </span>
+    // If user is NOT logged in, show login screen
+    if (!isLoggedIn) {
+        return (
+            <div className="flex flex-col gap-8 text-center items-center w-full">
+                <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 drop-shadow-lg mt-12">
+                    Tic-Tac-Toe
+                </h1>
+
+                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+                    <div className="bg-gray-800/60 border border-gray-700 rounded-2xl p-8 w-full backdrop-blur-sm">
+                        <FaGamepad className="text-5xl text-purple-400 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold text-white mb-2">Sign In to Play</h2>
+                        <p className="text-gray-400 text-sm mb-6">
+                            Login or create an account to start playing Tic-Tac-Toe with friends online!
+                        </p>
                         <button
-                            onClick={handleLogout}
-                            className="text-gray-400 hover:text-red-400 transition-colors"
-                            title="Logout"
+                            onClick={() => setIsAuthOpen(true)}
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform hover:scale-105 text-lg"
                         >
-                            <FaSignOutAlt />
+                            Login / Register
                         </button>
                     </div>
-                ) : (
+                </div>
+
+                <AuthModal
+                    isOpen={isAuthOpen}
+                    onClose={() => setIsAuthOpen(false)}
+                    onLoginSuccess={handleLoginSuccess}
+                />
+            </div>
+        );
+    }
+
+    // User IS logged in — show the game menu
+    return (
+        <div className="flex flex-col gap-8 text-center items-center w-full relative">
+            {/* User Profile */}
+            <div className="absolute top-0 right-0 p-4">
+                <div className="flex items-center gap-4 bg-gray-800/80 p-2 rounded-full px-4 border border-gray-700">
+                    <span className="text-white font-semibold flex items-center gap-2">
+                        <FaUserCircle className="text-xl text-blue-400" />
+                        {user}
+                    </span>
                     <button
-                        onClick={() => setIsAuthOpen(true)}
-                        className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold shadow-lg transition-transform hover:scale-105 text-sm"
+                        onClick={handleLogout}
+                        className="text-gray-400 hover:text-red-400 transition-colors"
+                        title="Logout"
                     >
-                        Login / Register
+                        <FaSignOutAlt />
                     </button>
-                )}
+                </div>
             </div>
 
             <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 drop-shadow-lg mt-12">
@@ -168,3 +196,4 @@ const Menu = ({ onStartGame, onJoinGame }) => {
 };
 
 export default Menu;
+
