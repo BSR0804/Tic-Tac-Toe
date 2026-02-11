@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3001';
+const API_URL = 'https://tic-tac-toe-mf6l.onrender.com';
 
 export const login = async (username, password) => {
     const response = await fetch(`${API_URL}/login`, {

@@ -5,7 +5,7 @@ import Modal from './Modal';
 import Menu from './Menu';
 import { checkWinner, checkDraw, getBestMove } from '../utils/gameLogic';
 
-const socket = io('http://localhost:3001', {
+const socket = io('https://tic-tac-toe-mf6l.onrender.com', {
     autoConnect: false,
     transports: ['websocket'],  // Force WebSocket only, skip polling
     upgrade: false
