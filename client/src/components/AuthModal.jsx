@@ -161,4 +161,5 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     );
 };
 
+// AuthModal - Handles user login, registration, and social authentication (Google, Facebook)
 export default AuthModal;
