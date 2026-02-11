@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import Board from './Board';
 import Modal from './Modal';
@@ -7,8 +7,11 @@ import { checkWinner, checkDraw, getBestMove } from '../utils/gameLogic';
 
 const socket = io('https://tic-tac-toe-mf6l.onrender.com', {
     autoConnect: false,
-    transports: ['websocket'],  // Force WebSocket only, skip polling
-    upgrade: false
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
 });
 
 const Game = () => {
@@ -24,6 +27,16 @@ const Game = () => {
     const [turnMessage, setTurnMessage] = useState('');
     const [waitingForOpponent, setWaitingForOpponent] = useState(false);
 
+    // Refs to track current values for reconnection handler (closures in useEffect([]) are stale)
+    const roomRef = useRef('');
+    const playerSymbolRef = useRef(null);
+    const gameModeRef = useRef(null);
+
+    // Keep refs in sync with state
+    useEffect(() => { roomRef.current = room; }, [room]);
+    useEffect(() => { playerSymbolRef.current = playerSymbol; }, [playerSymbol]);
+    useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+
     // Derived state for Modal
     const [showModal, setShowModal] = useState(false);
 
@@ -36,7 +49,19 @@ const Game = () => {
     // Socket setup - all online game event listeners
     useEffect(() => {
         socket.on('connect', () => {
-            console.log('Connected to server');
+            console.log('Connected to server, socket.id:', socket.id);
+        });
+
+        // Handle reconnection — re-join room if we were in one
+        socket.io.on('reconnect', (attempt) => {
+            console.log(`Reconnected after ${attempt} attempts`);
+            if (roomRef.current && gameModeRef.current === 'online' && playerSymbolRef.current) {
+                console.log(`Re-joining room ${roomRef.current} as ${playerSymbolRef.current}`);
+                socket.emit('rejoin_room', {
+                    room: roomRef.current,
+                    symbol: playerSymbolRef.current
+                });
+            }
         });
 
         // Server confirms room join with role assignment
@@ -47,6 +72,26 @@ const Game = () => {
             setIsMyTurn(symbol === 'X');
             setWaitingForOpponent(waiting);
             console.log(`Joined room ${roomID} as ${symbol}, waiting: ${waiting}`);
+        });
+
+        // Server confirms rejoin with full state sync
+        socket.on('rejoin_ack', (data) => {
+            const { room: roomID, symbol, board: serverBoard, currentTurn, opponentPresent } = data;
+            console.log(`Rejoined room ${roomID} as ${symbol}, opponent: ${opponentPresent}`);
+            setRoom(roomID);
+            setPlayerSymbol(symbol);
+            setBoard([...serverBoard]);
+            setIsXNext(currentTurn === 'X');
+            setWaitingForOpponent(!opponentPresent);
+
+            // Check win/draw on the synced board
+            const winInfo = checkWinner(serverBoard);
+            if (winInfo) {
+                setWinner(winInfo.winner);
+                setWinningLine(winInfo.line);
+            } else if (checkDraw(serverBoard)) {
+                setWinner('Draw');
+            }
         });
 
         // Both players notified when game can begin
@@ -99,7 +144,9 @@ const Game = () => {
 
         return () => {
             socket.off('connect');
+            socket.io.off('reconnect');
             socket.off('room_joined');
+            socket.off('rejoin_ack');
             socket.off('game_start');
             socket.off('room_full');
             socket.off('move_made');
