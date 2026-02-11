@@ -161,12 +161,12 @@ const Menu = ({ onStartGame, onJoinGame }) => {
 
     // User IS logged in — show the game menu
     return (
-        <div className="flex flex-col gap-8 text-center items-center w-full relative">
-            {/* User Profile */}
-            <div className="absolute top-0 right-0 p-4">
-                <div className="flex items-center gap-4 bg-gray-800/80 p-2 rounded-full px-4 border border-gray-700">
-                    <span className="text-white font-semibold flex items-center gap-2">
-                        <FaUserCircle className="text-xl text-blue-400" />
+        <div className="flex flex-col gap-4 text-center items-center w-full">
+            {/* User Profile - top right aligned */}
+            <div className="self-end">
+                <div className="flex items-center gap-3 bg-gray-800/80 p-2 rounded-full px-4 border border-gray-700">
+                    <span className="text-white font-semibold flex items-center gap-2 text-sm">
+                        <FaUserCircle className="text-lg text-blue-400" />
                         {user}
                     </span>
                     <button
@@ -179,7 +179,7 @@ const Menu = ({ onStartGame, onJoinGame }) => {
                 </div>
             </div>
 
-            <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 drop-shadow-lg mt-12">
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 drop-shadow-lg">
                 Tic-Tac-Toe
             </h1>
 
