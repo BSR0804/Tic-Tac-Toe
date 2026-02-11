@@ -22,6 +22,7 @@ const Game = () => {
     const [playerSymbol, setPlayerSymbol] = useState(null); // 'X' or 'O' for online
     const [isMyTurn, setIsMyTurn] = useState(true);
     const [turnMessage, setTurnMessage] = useState('');
+    const [waitingForOpponent, setWaitingForOpponent] = useState(false);
 
     // Derived state for Modal
     const [showModal, setShowModal] = useState(false);
@@ -32,72 +33,80 @@ const Game = () => {
         }
     }, [winner]);
 
-    // Socket setup
+    // Socket setup - all online game event listeners
     useEffect(() => {
         socket.on('connect', () => {
             console.log('Connected to server');
         });
 
-        socket.on('room_joined', (roomID) => {
+        // Server confirms room join with role assignment
+        socket.on('room_joined', (data) => {
+            const { room: roomID, symbol, waiting } = data;
             setRoom(roomID);
-            // If we just joined, we are O. If we created, we set X elsewhere (in handleStartGame)
-            // Actually simpler: 
-            // Creator emits join_room -> gets room_joined. 
-            // Joiner emits join_room -> gets room_joined.
-            // We need to distinguish.
-            // Let's rely on local state 'playerSymbol' set during interaction.
+            setPlayerSymbol(symbol);
+            setIsMyTurn(symbol === 'X');
+            setWaitingForOpponent(waiting);
+            console.log(`Joined room ${roomID} as ${symbol}, waiting: ${waiting}`);
+        });
+
+        // Both players notified when game can begin
+        socket.on('game_start', (data) => {
+            console.log('Game starting!', data);
+            setWaitingForOpponent(false);
+        });
+
+        // Room is full
+        socket.on('room_full', (roomID) => {
+            alert(`Room ${roomID} is full!`);
+            setGameMode(null);
+        });
+
+        // Server broadcasts validated moves to ALL players (including sender)
+        socket.on('move_made', (data) => {
+            const { index, player, board: serverBoard, currentTurn } = data;
+            console.log(`Move received: ${player} -> cell ${index}`);
+
+            // Use server board as source of truth
+            setBoard([...serverBoard]);
+            setIsXNext(currentTurn === 'X');
+
+            // Check win/draw on the server board
+            const winInfo = checkWinner(serverBoard);
+            if (winInfo) {
+                setWinner(winInfo.winner);
+                setWinningLine(winInfo.line);
+            } else if (checkDraw(serverBoard)) {
+                setWinner('Draw');
+            }
+        });
+
+        // Server broadcasts reset to ALL players
+        socket.on('game_reset_ack', (data) => {
+            const { board: serverBoard, currentTurn } = data;
+            setBoard([...serverBoard]);
+            setIsXNext(currentTurn === 'X');
+            setWinner(null);
+            setWinningLine([]);
+            setShowModal(false);
         });
 
         socket.on('player_left', () => {
             alert('Opponent left the game');
             setGameMode(null);
-            resetGame();
+            setWaitingForOpponent(false);
+            resetGame(false, true);
         });
 
         return () => {
             socket.off('connect');
             socket.off('room_joined');
+            socket.off('game_start');
+            socket.off('room_full');
+            socket.off('move_made');
+            socket.off('game_reset_ack');
             socket.off('player_left');
         };
     }, []);
-
-    // Remote Move Listener - needs access to current board/state or use functional updates
-    useEffect(() => {
-        const handleRemoteMove = (data) => {
-            const { index, player } = data;
-
-            setBoard(prev => {
-                const newBoard = [...prev];
-                newBoard[index] = player;
-
-                // Check win/draw immediately on the new board
-                const winInfo = checkWinner(newBoard);
-                if (winInfo) {
-                    setWinner(winInfo.winner);
-                    setWinningLine(winInfo.line);
-                } else if (checkDraw(newBoard)) {
-                    setWinner('Draw');
-                }
-
-                return newBoard;
-            });
-
-            setIsXNext(prev => !prev);
-            setIsMyTurn(true); // Remote moved, now it's my turn
-        };
-
-        const handleRemoteReset = () => {
-            resetGame(false);
-        };
-
-        socket.on('receive_move', handleRemoteMove);
-        socket.on('receive_reset', handleRemoteReset);
-
-        return () => {
-            socket.off('receive_move', handleRemoteMove);
-            socket.off('receive_reset', handleRemoteReset);
-        };
-    }, []); // Dependencies? Empty because functional updates used.
 
     // AI Logic
     useEffect(() => {
@@ -140,14 +149,10 @@ const Game = () => {
         if (board[index] || winner) return;
 
         if (gameMode === 'online') {
-            if (!isMyTurn) return;
-            // Socket emit
-            const currentPlayer = playerSymbol; // Should match isXNext logic: X starts
-            // Validation:
-            if ((isXNext && playerSymbol !== 'X') || (!isXNext && playerSymbol !== 'O')) return;
-
-            performMove(index, playerSymbol);
-            socket.emit('make_move', { room, index, player: playerSymbol });
+            if (waitingForOpponent) return;
+            // Don't apply locally — just send to server.
+            // Server validates and broadcasts back via 'move_made'.
+            socket.emit('make_move', { room, index });
         } else if (gameMode === 'ai') {
             if (!isXNext) return; // Wait for AI
             performMove(index, 'X');
@@ -176,8 +181,7 @@ const Game = () => {
             const newRoom = Math.random().toString(36).substring(2, 8).toUpperCase();
             joinRoomWhenReady(newRoom);
             setRoom(newRoom);
-            setPlayerSymbol('X');
-            setIsMyTurn(true);
+            // Symbol will be assigned by server via 'room_joined'
             setGameMode('online');
         } else {
             setGameMode(mode);
@@ -189,8 +193,7 @@ const Game = () => {
         resetGame(false, true);
         joinRoomWhenReady(inputRoom.toUpperCase());
         setRoom(inputRoom.toUpperCase());
-        setPlayerSymbol('O');
-        setIsMyTurn(false); // X goes first
+        // Symbol will be assigned by server via 'room_joined'
         setGameMode('online');
     };
 
@@ -205,9 +208,9 @@ const Game = () => {
             setRoom('');
             setPlayerSymbol(null);
             setIsMyTurn(true);
+            setWaitingForOpponent(false);
         } else if (gameMode === 'online') {
-            // Just clearing board
-            setIsMyTurn(playerSymbol === 'X');
+            // For online, tell server to reset — server will broadcast back via 'game_reset_ack'
             if (emit) socket.emit('game_reset', room);
         }
     };
@@ -239,10 +242,22 @@ const Game = () => {
                         </div>
                     )}
 
+                    {/* Waiting for opponent indicator */}
+                    {gameMode === 'online' && waitingForOpponent && (
+                        <div className="mb-4 text-lg animate-pulse text-yellow-300">
+                            Waiting for opponent to join...
+                        </div>
+                    )}
+
                     {/* Turn Indicator for Online/AI */}
-                    {(gameMode === 'online' || gameMode === 'ai') && !winner && (
+                    {(gameMode === 'online' || gameMode === 'ai') && !winner && !waitingForOpponent && (
                         <div className="mb-4 text-lg animate-pulse">
-                            {isMyTurn ? "Your Turn" : "Opponent's Turn..."}
+                            {gameMode === 'online'
+                                ? (isXNext && playerSymbol === 'X') || (!isXNext && playerSymbol === 'O')
+                                    ? "Your Turn"
+                                    : "Opponent's Turn..."
+                                : isMyTurn ? "Your Turn" : "Opponent's Turn..."
+                            }
                         </div>
                     )}
 
@@ -251,7 +266,7 @@ const Game = () => {
                         onCellClick={handleCellClick}
                         winningLine={winningLine}
                         isXNext={isXNext}
-                        disabled={!!winner || (gameMode === 'online' && !isMyTurn) || (gameMode === 'ai' && !isXNext)}
+                        disabled={!!winner || (gameMode === 'online' && (waitingForOpponent || (isXNext ? playerSymbol !== 'X' : playerSymbol !== 'O'))) || (gameMode === 'ai' && !isXNext)}
                     />
 
                     <button

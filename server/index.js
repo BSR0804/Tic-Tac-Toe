@@ -88,38 +88,98 @@ io.on('connection', (socket) => {
         socket.join(room);
         console.log(`User ${socket.id} joined room: ${room}`);
 
-        // Manage room state
         if (!rooms.has(room)) {
-            rooms.set(room, { count: 1, players: [socket.id], board: Array(9).fill(null), isXNext: true });
+            // First player creates the room
+            rooms.set(room, {
+                players: [socket.id],
+                board: Array(9).fill(null),
+                currentTurn: 'X',
+                roles: { [socket.id]: 'X' },
+                gameActive: true
+            });
+            socket.emit('room_joined', { room, symbol: 'X', waiting: true });
+            console.log(`Room ${room} created by ${socket.id} as X`);
         } else {
             const roomData = rooms.get(room);
-            roomData.count++;
+            if (roomData.players.length >= 2) {
+                socket.emit('room_full', room);
+                return;
+            }
             roomData.players.push(socket.id);
-            rooms.set(room, roomData);
-        }
+            roomData.roles[socket.id] = 'O';
+            socket.emit('room_joined', { room, symbol: 'O', waiting: false });
+            console.log(`${socket.id} joined room ${room} as O`);
 
-        // Notify user of success/role? For now just ack
-        socket.emit('room_joined', room);
+            // Notify both players the game can start
+            io.to(room).emit('game_start', {
+                room,
+                board: roomData.board,
+                currentTurn: roomData.currentTurn
+            });
+        }
     });
 
     socket.on('make_move', (data) => {
-        // data: { room, index, player }
-        // Broadcast move to other players in room
-        socket.to(data.room).emit('receive_move', data);
+        // data: { room, index }
+        const roomData = rooms.get(data.room);
+        if (!roomData) return;
+        if (!roomData.gameActive) return;
+
+        const playerSymbol = roomData.roles[socket.id];
+        if (!playerSymbol) return; // Not a player in this room
+
+        // Validate it's this player's turn
+        if (roomData.currentTurn !== playerSymbol) {
+            console.log(`Not ${socket.id}'s turn. Current turn: ${roomData.currentTurn}`);
+            return;
+        }
+
+        // Validate the cell is empty
+        if (roomData.board[data.index] != null) {
+            console.log(`Cell ${data.index} already occupied`);
+            return;
+        }
+
+        // Apply move on server
+        roomData.board[data.index] = playerSymbol;
+        roomData.currentTurn = playerSymbol === 'X' ? 'O' : 'X';
+
+        // Broadcast the validated move to ALL players in the room
+        io.to(data.room).emit('move_made', {
+            index: data.index,
+            player: playerSymbol,
+            board: roomData.board,
+            currentTurn: roomData.currentTurn
+        });
+
+        console.log(`Move in ${data.room}: ${playerSymbol} -> cell ${data.index}`);
     });
 
     socket.on('game_reset', (room) => {
-        socket.to(room).emit('receive_reset');
+        const roomData = rooms.get(room);
+        if (!roomData) return;
+
+        // Reset the board on server
+        roomData.board = Array(9).fill(null);
+        roomData.currentTurn = 'X';
+        roomData.gameActive = true;
+
+        // Broadcast reset to ALL players in room
+        io.to(room).emit('game_reset_ack', {
+            board: roomData.board,
+            currentTurn: roomData.currentTurn
+        });
     });
 
     socket.on('disconnect', () => {
         console.log('User Disconnected', socket.id);
-        rooms.forEach((value, key) => {
-            if (value.players.includes(socket.id)) {
-                value.players = value.players.filter(id => id !== socket.id);
-                value.count--;
-                if (value.count === 0) {
+        rooms.forEach((roomData, key) => {
+            if (roomData.players.includes(socket.id)) {
+                roomData.players = roomData.players.filter(id => id !== socket.id);
+                delete roomData.roles[socket.id];
+                if (roomData.players.length === 0) {
                     rooms.delete(key);
+                    console.log(`Room ${key} deleted (empty)`);
                 } else {
                     socket.to(key).emit('player_left');
                 }
