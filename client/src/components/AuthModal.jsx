@@ -160,5 +160,5 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         </div>
     );
 };
-//auth page removed phone verification with version 1 
+
 export default AuthModal;

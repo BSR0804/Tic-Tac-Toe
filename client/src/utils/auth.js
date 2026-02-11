@@ -33,7 +33,7 @@ export const getCurrentUser = () => {
     return localStorage.getItem('username');
 };
 
-// Mock Functions for Social/Phone Auth
+// Mock Functions for Social Auth
 export const mockSocialLogin = async (provider) => {
     return new Promise((resolve) => {
         setTimeout(() => {
