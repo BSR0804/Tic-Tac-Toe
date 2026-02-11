@@ -8,7 +8,12 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // Enable JSON body parsing
+app.use(express.json());
+
+// Health check route
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'Tic-Tac-Toe Server is running' });
+});
 
 // Database Setup
 const db = new sqlite3.Database('./database.sqlite', (err) => {
@@ -124,6 +129,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`SERVER RUNNING ON PORT ${PORT}`);
 });
