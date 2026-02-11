@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { login, register, mockSocialLogin, sendMockOtp, verifyMockOtp } from '../utils/auth';
-import { FaGoogle, FaFacebook, FaPhoneAlt } from 'react-icons/fa';
+import { login, register, mockSocialLogin } from '../utils/auth';
+import { FaGoogle, FaFacebook } from 'react-icons/fa';
 import { useGoogleLogin } from '@react-oauth/google';
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
-    const [view, setView] = useState('login'); // 'login', 'register', 'phone', 'otp'
+    const [view, setView] = useState('login'); // 'login', 'register'
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
 
@@ -35,8 +33,6 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     const resetForm = () => {
         setUsername('');
         setPassword('');
-        setPhoneNumber('');
-        setOtp('');
         setError('');
         setMessage('');
     };
@@ -76,35 +72,9 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         }
     };
 
-    const handlePhoneSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        try {
-            await sendMockOtp(phoneNumber);
-            setView('otp');
-            setMessage(`OTP sent to ${phoneNumber} (Use 123456)`);
-        } catch (err) {
-            setError('Failed to send OTP');
-        }
-    };
-
-    const handleOtpVerify = async (e) => {
-        e.preventDefault();
-        setError('');
-        try {
-            const data = await verifyMockOtp(phoneNumber, otp);
-            onLoginSuccess(data.username);
-            onClose();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const renderTitle = () => {
         switch (view) {
             case 'register': return 'Create Account';
-            case 'phone': return 'Phone Login';
-            case 'otp': return 'Verify OTP';
             default: return 'Welcome Back';
         }
     };
@@ -172,55 +142,8 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                             >
                                 <FaFacebook className="text-white" /> Continue with Facebook
                             </button>
-                            <button
-                                onClick={() => { setView('phone'); resetForm(); }}
-                                className="w-full bg-gray-700 text-white font-semibold py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <FaPhoneAlt className="text-green-400" /> Continue with Phone
-                            </button>
                         </div>
                     </>
-                )}
-
-                {view === 'phone' && (
-                    <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
-                        <input
-                            type="tel"
-                            placeholder="Phone Number (e.g., +1234567890)"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            className="p-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                            required
-                        />
-                        <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg mt-2">
-                            Get OTP
-                        </button>
-                        <button onClick={() => setView('login')} className="text-gray-400 hover:text-white text-sm mt-2">
-                            Back to Login
-                        </button>
-                    </form>
-                )}
-
-                {view === 'otp' && (
-                    <form onSubmit={handleOtpVerify} className="flex flex-col gap-4">
-                        <div className="text-center text-gray-300 mb-2">
-                            Enter OTP sent to {phoneNumber}
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="OTP Code"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            className="p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-center tracking-widest text-xl focus:outline-none focus:border-blue-500"
-                            required
-                        />
-                        <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg mt-2">
-                            Verify & Login
-                        </button>
-                        <button onClick={() => setView('phone')} className="text-gray-400 hover:text-white text-sm mt-2">
-                            Change Phone Number
-                        </button>
-                    </form>
                 )}
 
                 {view === 'login' && (

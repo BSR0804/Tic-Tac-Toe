@@ -45,26 +45,3 @@ export const mockSocialLogin = async (provider) => {
     });
 };
 
-export const sendMockOtp = async (phoneNumber) => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            console.log(`OTP for ${phoneNumber} is 123456`);
-            resolve(true);
-        }, 1000);
-    });
-};
-
-export const verifyMockOtp = async (phoneNumber, otp) => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (otp === '123456') {
-                const mockUser = `Phone_User_${phoneNumber.slice(-4)}`;
-                localStorage.setItem('token', `mock_token_phone`);
-                localStorage.setItem('username', mockUser);
-                resolve({ username: mockUser });
-            } else {
-                reject(new Error('Invalid OTP'));
-            }
-        }, 1000);
-    });
-};
