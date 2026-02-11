@@ -29,7 +29,7 @@ const Menu = ({ onStartGame, onJoinGame }) => {
                 onClick={() => onStartGame('online-random')}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center justify-center gap-3"
             >
-                <FaGlobe className="text-xl" /> Online <span className="text-xs font-normal opacity-75">(Random)</span>
+                <FaGlobe className="text-xl" /> Online <span className="text-xs font-normal opacity-75">(coming soon)</span>
             </button>
 
             <button
