@@ -25,12 +25,12 @@ const Menu = ({ onStartGame, onJoinGame }) => {
 
     const renderMainMenu = () => (
         <div className="flex flex-col gap-4 w-full max-w-sm">
-            <button
+            {/* <button
                 onClick={() => alert('online mode coming soon!')}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center justify-center gap-3"
             >
                 <FaGlobe className="text-xl" /> Online <span className="text-xs font-normal opacity-75">(coming soon)</span>
-            </button>
+            </button> */}
 
             <button
                 onClick={() => alert("Team Up mode coming soon!")}
